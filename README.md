@@ -1,4 +1,4 @@
-# Bulk upload from Apple Photos to Samsung the Frame
+# Bulk upload from (Apple or any other) Photos to Samsung the Frame
 
 Automate bulk photo uploads to Samsung the Frame TV's Art Mode. The mobile app allows upload only one-by-one but I wanted bulk upload. Just put your pictures from Apple Photos or any other source into the ./input folder, optimize them for a portrait mounted Samsung the Frame and bulk upload.
 
@@ -36,28 +36,25 @@ Communication happens in your local network, nothing is uploaded to the Internet
 The script collects all photos from ./input/ and crops portrait photos, makes landscape photos into collages of 2, resizes to the native resolution.
 
 ```
-Portrait          Landscape pair             Landscape last single
+Portrait            Landscape pair                 Landscape last single
 
-┌─────┐          ┌──────────┐  ┌──────────┐    ┌──────────┐
-│     │          │ photo  1 │  │ photo  2 │    │  photo   │
-│photo│          │          │  │          │    │          │
-│     │          └──────────┘  └──────────┘    └──────────┘
-│     │               │                              │
-└─────┘               │                              │
-   │                  │                              │
-   ▼ crop l/r         ▼ collage                      ▼ crop l/r
- ┌───┐              ┌───┐                          ┌───┐
- │   │              │███│  ← black                 │███│
- │   │              ├───┤                          │███│  ← black
- │   │              │   │  ← photo 1               │███│
- │   │              ├───┤                          ├───┤
- │   │← photo       │███│  ← black                 │   │  ← photo
- │   │              ├───┤                          ├───┤
- │   │              │   │  ← photo 2               │███│
- │   │              ├───┤                          │███│
- │   │              │███│  ← black                 │███│
- └───┘              └───┘                          └───┘
-1080×1920         1080×1920                       1080×1920
+   ┌───────┐         ┌────────┐  ┌────────┐          ┌────────┐
+   │       │         │        │  │        │          │        │
+   │ photo │         │photo 1 │  │photo 2 │          │ photo  │
+   │       │         └────────┘  └────────┘          └────────┘
+   └───────┘               │                              │
+       │                   │                              │
+       ▼ crop l/r          ▼ collage                      ▼ fill top/bottom
+✂️┌─────────┐✂️        ┌─────────┐                   ┌─────────┐
+✂️│         │✂️        │█████████│ ← black           │█████████│ ← black
+✂️│         │✂️        │ photo 1 │ ← photo 1         │█████████│
+✂️│  photo  │✂️        │         │                   │         │
+✂️│         │✂️        │█████████│ ← black           │  photo  │
+✂️│         │✂️        │ photo 2 │ ← photo 2         │         │
+✂️│         │✂️        │         │                   │█████████│
+✂️│         │✂️        │█████████│ ← black           │█████████│
+✂️└─────────┘✂️        └─────────┘                   └─────────┘
+   1080×1920           1080×1920                     1080×1920
 ```
 
 ```bash
@@ -70,9 +67,9 @@ bash process_photos.sh
 source .venv/bin/activate
 samsungtv --host samsung.fritz.box art-sync output/ --sync-all --portrait-matte none
 ```
-This uses a local state file in the ./output/ folder to track uploads.
+This uses a local state file `./output/.samsungtvws-art-sync.json` to track uploads.
 - Re-running uploads new photos / deletes removed photos / prevents uploading unchanged photos repeatedly. 
-- If connection timed out, happened to me once for >180 photos, just run the command a second time, it will skip those already uploaded.
+- If connection timed out, happened to me once for >180 photos when Samsung was in Art Mode and powered off after some time, just go to the main menu to keep it powered on and upload again.
 - Can be overridden with `--refresh`. 
 
 ### Delete all uploaded photos
