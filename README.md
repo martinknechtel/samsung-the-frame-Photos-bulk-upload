@@ -1,104 +1,94 @@
-# Samsung The Frame — Art Mode Photo Upload
+# Bulk upload from Apple Photos to Samsung the Frame
 
-Automate bulk photo uploads to Samsung The Frame TV's Art Mode using `samsungtvws`.
+Automate bulk photo uploads to Samsung the Frame TV's Art Mode. The mobile app allows upload only one-by-one but I wanted bulk upload. Just put your pictures from Apple Photos or any other source into the ./input folder, optimize them for a portrait mounted Samsung the Frame and bulk upload.
 
-**TV:** `samsung.fritz.box` / `192.168.178.152`
+I use my Samsung the Frame mounted in portrait mode to my wall.
+* Size 32"
+* Resolution 1080 × 1920 (Full HD, portrait mounted)
+* Aspect Ratio 9:16
+* Hostname `samsung.fritz.box` in my case
 
 ---
 
 ## Setup
 
-### 1. Create a virtual environment
+### 1. Create a Python virtual environment and install required libs
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### 2. Install samsungtvws
-
-```bash
 pip3 install "samsungtvws[cli]"
 ```
 
-### 3. First-time TV authentication
-
-On the first connection, the TV will show a prompt asking you to allow access. Accept it on the TV.
+### 2. Install prerequisites
+```bash
+brew install imagemagick
+```
 
 ---
 
 ## Usage
 
-### Check available matte/border styles
+Communication happens in your local network, nothing is uploaded to the Internet. For every API call, the TV will show a prompt asking you to allow access. Accept it on the TV.
 
-```bash
-samsungtv --host samsung.fritz.box art-matte-list
+### Optimize photos for Samsung the Frame in portrait mounting
+
+The script collects all photos from ./input/ and crops portrait photos, makes landscape photos into collages of 2, resizes to the native resolution.
+
+```
+Portrait          Landscape pair             Landscape last single
+
+┌─────┐          ┌──────────┐  ┌──────────┐    ┌──────────┐
+│     │          │ photo  1 │  │ photo  2 │    │  photo   │
+│photo│          │          │  │          │    │          │
+│     │          └──────────┘  └──────────┘    └──────────┘
+│     │               │                              │
+└─────┘               │                              │
+   │                  │                              │
+   ▼ crop l/r         ▼ collage                      ▼ crop l/r
+ ┌───┐              ┌───┐                          ┌───┐
+ │   │              │███│  ← black                 │███│
+ │   │              ├───┤                          │███│  ← black
+ │   │              │   │  ← photo 1               │███│
+ │   │              ├───┤                          ├───┤
+ │   │← photo       │███│  ← black                 │   │  ← photo
+ │   │              ├───┤                          ├───┤
+ │   │              │   │  ← photo 2               │███│
+ │   │              ├───┤                          │███│
+ │   │              │███│  ← black                 │███│
+ └───┘              └───┘                          └───┘
+1080×1920         1080×1920                       1080×1920
 ```
 
-### Upload all photos from a folder
-
 ```bash
-samsungtv --host samsung.fritz.box art-sync photos/ --upload-all --matte shadowbox_polar
+bash process_photos.sh
 ```
 
-Uses a local state file to track uploads — re-running only uploads new photos.
-
-### Sync (upload new + delete removed photos)
-
-```bash
-samsungtv --host samsung.fritz.box art-sync photos/ --sync-all --matte shadowbox_polar
-```
-
-### Upload a single photo
-
-```bash
-samsungtv --host samsung.fritz.box art-upload photos/example.jpg --matte shadowbox_polar
-```
-
-### No border/matte
-
-```bash
-samsungtv --host samsung.fritz.box art-sync photos/ --upload-all --matte none
-```
-
----
-
-## Slideshow settings
-
-```bash
-# Shuffled slideshow, rotate every 30 minutes, from uploaded photos
-samsungtv --host samsung.fritz.box art-slideshow-set --category-id MY-C0002 --duration 30 --shuffle
-```
-
-| Category ID | Content |
-|---|---|
-| `MY-C0002` | My Pictures (uploaded photos) |
-| `MY-C0004` | Favorites |
-| `MY-C0008` | Samsung Art Store |
-
----
-
-## What can be controlled via CLI
-
-| Setting | Supported |
-|---|---|
-| Bulk upload from folder | Yes (`art-sync`) |
-| Matte/passepartout style | Yes (`--matte <style>`) |
-| No border | Yes (`--matte none`) |
-| Photo filters | Yes (`art-photo-filter-set`) |
-| Slideshow duration & shuffle | Yes (`art-slideshow-set`) |
-| Art Mode on/off | Yes (`art-mode --on/--off`) |
-| Brightness | Yes (Python API) |
-| Border thickness / custom color | No — use the Samsung Frame app |
-
----
-
-## Workflow: iCloud Photos
-
-1. Export photos from iCloud/Apple Photos to the `photos/` folder
-2. Run `art-sync` to upload new photos to the TV:
+### Sync processed photos to the TV
 
 ```bash
 source .venv/bin/activate
-samsungtv --host samsung.fritz.box art-sync photos/ --upload-all --matte shadowbox_polar
+samsungtv --host samsung.fritz.box art-sync output/ --sync-all --portrait-matte none
 ```
+This uses a local state file in the ./output/ folder to track uploads.
+- Re-running uploads new photos / deletes removed photos / prevents uploading unchanged photos repeatedly. 
+- If connection timed out, happened to me once for >180 photos, just run the command a second time, it will skip those already uploaded.
+- Can be overridden with `--refresh`. 
+
+### Delete all uploaded photos
+
+```bash
+source .venv/bin/activate
+samsungtv --host samsung.fritz.box art-available \
+  | python3 -c "
+import sys, ast
+items = ast.literal_eval(sys.stdin.read())
+ids = {i['content_id'] for i in items if i['content_id'].startswith('MY_')}
+print(' '.join(ids))
+" \
+  | xargs samsungtv --host samsung.fritz.box art-delete-list
+```
+
+Notes:
+- `art-available` lists all photos currently on the TV. `python3` extracts their content IDs, which are then passed to `art-delete-list` in one call. This removes everything uploaded — including photos added outside of `art-sync`.
+- Only `MY_` IDs are selected — `SAM-` preinstalled/store content is left untouched
