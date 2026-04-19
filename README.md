@@ -40,8 +40,8 @@ bash process_photos.sh
 The script collects all photos from ./input/ and crops portrait photos, makes landscape photos into collages of 2, resizes to the native resolution.
 
 ```
-   Portrait 4x     Remaining         Landscape pair                  Landscape last single
-    ┌───────┐      <4 Portrait
+   Portrait 4x     Remaining         Landscape pair                  Landscape solo
+    ┌───────┐      <4 Portraits
    ┌┴──────┐│      ┌───────┐         ┌────────┐  ┌────────┐          ┌────────┐
    │▒     ▒││      │▒     ▒│         │        │  │        │          │        │
    │▒photo▒││      │▒photo▒│         │photo 1 │  │photo 2 │          │ photo  │

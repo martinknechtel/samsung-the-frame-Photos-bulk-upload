@@ -100,6 +100,20 @@ make_landscape_collage() {
   rm -f "$tmp_top" "$tmp_bot"
 }
 
+process_landscape_solo() {
+  local src="$1"
+  local stem
+  stem=$(basename "$src" | sed 's/\.[^.]*$//' | cut -c1-120)
+  local out="$OUTPUT_DIR/${stem}.jpg"
+  echo "  [landscape solo] $src"
+  magick "$src" \
+    -resize "${W}x" \
+    -background black \
+    -gravity center \
+    -extent "${W}x${H}" \
+    "$out"
+}
+
 # Classify all input photos
 for f in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR"/*.heic "$INPUT_DIR"/*.HEIC "$INPUT_DIR"/*.JPG "$INPUT_DIR"/*.PNG; do
   [[ -f "$f" ]] || continue
@@ -135,7 +149,7 @@ while (( i < ${#landscape_files[@]} )); do
     (( i += 2 ))
   else
     echo "  [landscape solo] ${landscape_files[$i]}"
-    process_portrait "${landscape_files[$i]}"
+    process_landscape_solo "${landscape_files[$i]}"
     (( i += 1 ))
   fi
 done
