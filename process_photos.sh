@@ -68,32 +68,17 @@ make_landscape_collage() {
   local out="$OUTPUT_DIR/${stem_top}+${stem_bot}.jpg"
   echo "  [collage]  $top + $bot"
 
+  local CH=$(( (H - GAP) / 2 ))
   local tmp_top="/tmp/frame_top_$$.jpg"
   local tmp_bot="/tmp/frame_bot_$$.jpg"
 
-  magick "$top" -resize "${W}x" "$tmp_top"
-  magick "$bot" -resize "${W}x" "$tmp_bot"
+  magick "$top" -resize "${W}x${CH}^" -gravity center -extent "${W}x${CH}" "$tmp_top"
+  magick "$bot" -resize "${W}x${CH}^" -gravity center -extent "${W}x${CH}" "$tmp_bot"
 
-  local th bh
-  read -r th < <(magick identify -format "%h\n" "$tmp_top")
-  read -r bh < <(magick identify -format "%h\n" "$tmp_bot")
-  local total_photo_h=$(( th + bh ))
-
-  if (( total_photo_h > H )); then
-    local new_th=$(( th * H * 90 / (total_photo_h * 100) ))
-    local new_bh=$(( bh * H * 90 / (total_photo_h * 100) ))
-    magick "$tmp_top" -resize "x${new_th}" "$tmp_top"
-    magick "$tmp_bot" -resize "x${new_bh}" "$tmp_bot"
-    th=$new_th; bh=$new_bh
-    total_photo_h=$(( th + bh ))
-  fi
-
-  local gap=$(( (H - total_photo_h) / 3 ))
-  local y_top=$gap
-  local y_bot=$(( gap + th + gap ))
+  local y_bot=$(( CH + GAP ))
 
   magick -size "${W}x${H}" xc:black \
-    \( "$tmp_top" \) -geometry "+0+${y_top}" -composite \
+    \( "$tmp_top" \) -geometry "+0+0"       -composite \
     \( "$tmp_bot" \) -geometry "+0+${y_bot}" -composite \
     "$out"
 
